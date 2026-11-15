@@ -1,124 +1,401 @@
 import { useEffect, useState } from 'react';
-import { api, USE_MOCKS } from './services/api.js';
-import { monthLabel, slotLabel } from './lib/dates.js';
-import CreateEventForm from './components/CreateEventForm.jsx';
-import MonthCalendar from './components/MonthCalendar.jsx';
-import SuggestedSlots from './components/SuggestedSlots.jsx';
 
-function routeFromHash() {
+import AccountPanel from './components/AccountPanel.jsx';
+import AvailabilityForm from './components/AvailabilityForm.jsx';
+import CreateEventForm from './components/CreateEventForm.jsx';
+import OrganizerAvailability from './components/OrganizerAvailability.jsx';
+
+import { api } from './services/api.js';
+import { monthLabel } from './lib/dates.js';
+
+function readRoute() {
   const [page, rawToken] = window.location.hash.slice(1).split('/');
+
   let token = '';
-  try { token = decodeURIComponent(rawToken || ''); } catch { /* Invalid link produces the error screen. */ }
-  return { page: ['invite', 'dashboard'].includes(page) ? page : 'home', token };
+
+  try {
+    token = decodeURIComponent(rawToken || '');
+  } catch {
+    // The API will reject invalid invite tokens.
+  }
+
+  return {
+    page: ['invite', 'dashboard'].includes(page) ? page : 'home',
+    token,
+  };
 }
-function go(page, token) { window.location.hash = token ? `${page}/${encodeURIComponent(token)}` : page; }
+
+function go(page, token) {
+  window.location.hash = token
+    ? `${page}/${encodeURIComponent(token)}`
+    : page;
+}
+
+function EventList({ events, joined }) {
+  if (events.length === 0) {
+    return (
+      <p>
+        {joined
+          ? 'You haven’t joined any events yet. Open an invite link to join.'
+          : 'You haven’t created any events yet.'}
+      </p>
+    );
+  }
+
+  return (
+    <div className="event-list">
+      {events.map((event) => (
+        <button
+          type="button"
+          key={event.eventId}
+          className="event-card"
+          onClick={() => go(
+            joined ? 'invite' : 'dashboard',
+            event.inviteToken
+          )}
+        >
+          <span className="event-icon" aria-hidden="true">
+            {joined ? '↗' : '✦'}
+          </span>
+
+          <span>
+            <strong>{event.name}</strong>
+            <small>{monthLabel(event.month)}</small>
+            <small>
+              {joined
+                ? 'View or edit your availability'
+                : 'View your organizer dashboard'}
+            </small>
+          </span>
+
+          <span aria-hidden="true">→</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function App() {
-  const [route, setRoute] = useState(routeFromHash);
-  const [events, setEvents] = useState([]);
+  const [route, setRoute] = useState(readRoute);
+  const [activeTab, setActiveTab] = useState('organizing');
+
+  const [organizedEvents, setOrganizedEvents] = useState([]);
+  const [joinedEvents, setJoinedEvents] = useState([]);
+
   const [event, setEvent] = useState(null);
   const [attendees, setAttendees] = useState([]);
-  const [summary, setSummary] = useState({ slots: [], joinedCount: 0, sharedCount: 0 });
-  const [selected, setSelected] = useState(null);
-  const [name, setName] = useState('You');
-  const [joined, setJoined] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [shared, setShared] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [revision, setRevision] = useState(0);
 
+  function refresh() {
+    setRevision((value) => value + 1);
+  }
+
   useEffect(() => {
-    function change() { setRoute(routeFromHash()); setMessage(''); }
-    window.addEventListener('hashchange', change);
-    return () => window.removeEventListener('hashchange', change);
+    function onHashChange() {
+      setRoute(readRoute());
+      setMessage('');
+    }
+
+    window.addEventListener('hashchange', onHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+    };
   }, []);
 
   useEffect(() => {
     let ignore = false;
-    setLoading(true); setError(''); setEvent(null); setSelected(null);
-    setJoined(false); setConnected(false); setShared(false);
+
+    setLoading(true);
+    setError('');
+    setOrganizedEvents([]);
+    setJoinedEvents([]);
+    setEvent(null);
+    setAttendees([]);
+
     async function load() {
       try {
         if (route.page === 'home') {
-          const list = await api.listEvents();
-          if (!ignore) setEvents(list);
-        } else {
-          const [details, slots, dashboard] = await Promise.all([
-            api.getInvite(route.token), api.getSlots(route.token),
-            route.page === 'dashboard' ? api.getDashboard(route.token) : Promise.resolve(null),
+          const [organized, joined] = await Promise.all([
+            api.listEvents(),
+            api.listJoinedEvents(),
           ]);
-          if (!ignore) { setEvent(details); setSummary(slots); setAttendees(dashboard?.attendees || []); }
+
+          if (!ignore) {
+            setOrganizedEvents(organized);
+            setJoinedEvents(joined);
+          }
+        } else {
+          const [details, dashboard] = await Promise.all([
+            api.getInvite(route.token),
+
+            route.page === 'dashboard'
+              ? api.getDashboard(route.token)
+              : Promise.resolve(null),
+          ]);
+
+          if (!ignore) {
+            setEvent(details);
+            setAttendees(dashboard?.attendees || []);
+          }
         }
-      } catch (err) { if (!ignore) setError(err.message); }
-      finally { if (!ignore) setLoading(false); }
+      } catch (err) {
+        if (!ignore) {
+          setError(err.message);
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
+
     load();
-    return () => { ignore = true; };
+
+    return () => {
+      ignore = true;
+    };
   }, [route.page, route.token, revision]);
 
-  async function act(action) {
-    setBusy(true); setError(''); setMessage('');
-    try { await action(); }
-    catch (err) { setError(err.message || 'Something went wrong. Try again.'); }
-    finally { setBusy(false); }
-  }
-  async function refreshSlots() { setSummary(await api.getSlots(route.token)); }
+  async function createEvent(fields) {
+    setBusy(true);
+    setError('');
+    setMessage('');
 
-  return <div className="app">
-    <header className="topbar"><a className="brand" href="#home"><span className="brand-icon">g</span>gather<span className="brand-period">.</span></a>
-      <div className="header-right"><span className="badge">{USE_MOCKS ? 'Demo · mock data' : 'Backend mode'}</span>
-        {USE_MOCKS && <button className="text-button" disabled={busy} onClick={() => act(async () => {
-          api.resetDemo(); go('home'); setRevision((n) => n + 1);
-        })}>Reset demo</button>}</div>
-    </header>
-    <main>
-      <div className="hero"><span className="eyebrow">LESS BACK-AND-FORTH. MORE HANGING OUT.</span>
-        <h1>{route.page === 'home' ? 'Good plans start here.' : route.page === 'invite' ? 'You’re invited.' : 'Bring everyone together.'}</h1>
-        <p>{route.page === 'home' ? 'One invite. Everyone’s availability. A time that works.' : 'A little planning, a lot more time together.'}</p>
-      </div>
-      {error && <div className="error" role="alert">{error} <button className="text-button" onClick={() => setRevision((n) => n + 1)}>Retry</button></div>}
-      {message && <div className="success" role="status">{message}</div>}
-      {loading ? <p role="status">Loading your plans…</p> : route.page === 'home' ? <div className="layout">
-        <CreateEventForm busy={busy} onCreate={(fields) => act(async () => {
-          const created = await api.createEvent(fields); go('dashboard', created.inviteToken);
-        })} />
-        <section className="panel"><span className="eyebrow">YOUR PLANS</span><h2>On the horizon</h2>
-          <div className="event-list">{events.map((item) => <button key={item.eventId} className="event-card" onClick={() => go('dashboard', item.inviteToken)}>
-            <span className="event-icon" aria-hidden="true">✦</span><span><strong>{item.name}</strong><small>{monthLabel(item.month)}</small></span><span aria-hidden="true">→</span>
-          </button>)}</div>
-          <p className="small">Open Game Night to explore a filled-in example, or create your own plan.</p>
-        </section>
-      </div> : event && <>
-        <section className="panel event-banner">
-          <div><span className="eyebrow">{monthLabel(event.month)}</span><h2>{event.name}</h2><p>{event.description || 'No description yet.'}</p><small>{event.timeZone}</small></div>
-          {route.page === 'dashboard' && <div className="invite-tools"><label>Shareable invite link<input aria-label="Invite link" readOnly value={`${window.location.origin}/#invite/${encodeURIComponent(route.token)}`} /></label>
-            <div className="button-row"><button className="secondary" disabled={busy} onClick={() => act(async () => {
-              await navigator.clipboard.writeText(`${window.location.origin}/#invite/${encodeURIComponent(route.token)}`);
-              setMessage('Invite link copied. In mock mode, data is only available in this browser.');
-            })}>Copy link</button><a className="button" href={`#invite/${encodeURIComponent(route.token)}`}>Preview invite →</a></div>
-          </div>}
-        </section>
-        {route.page === 'invite' && <section className="panel join-panel"><div><span className="eyebrow">LET’S FIND A TIME</span><h2>Share when you’re free.</h2><p>{USE_MOCKS ? 'Try the three steps below. Google connection and sharing are simulated.' : 'Join, connect your account, and share your availability.'}</p></div>
-          <label>Your name<input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} /></label>
-          <div className="button-row">
-            <button disabled={busy || !name.trim()} onClick={() => act(async () => { await api.joinEvent(route.token, name.trim()); setJoined(true); await refreshSlots(); setMessage('You joined the event.'); })}>{joined ? '✓ Joined' : '1. Join event'}</button>
-            <button className="secondary" disabled={busy || !joined} onClick={() => act(async () => { await api.connectCalendar(); setConnected(true); })}>{connected ? '✓ Demo connected' : `2. ${USE_MOCKS ? 'Simulate Google connection' : 'Connect Google'}`}</button>
-            <button className="secondary" disabled={busy || !joined || (!USE_MOCKS ? false : !connected)} onClick={() => act(async () => { await api.shareAvailability(route.token); setShared(true); await refreshSlots(); setMessage('Availability shared.'); })}>{shared ? '✓ Shared · share again' : '3. Share availability'}</button>
+    try {
+      const created = await api.createEvent(fields);
+      go('dashboard', created.inviteToken);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inviteLink =
+    `${window.location.origin}/#invite/` +
+    encodeURIComponent(route.token);
+
+  async function copyInvite() {
+    setError('');
+
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setMessage('Invite link copied.');
+    } catch {
+      setError(
+        'Could not copy automatically. Copy the link from the box.'
+      );
+    }
+  }
+
+  const isJoinedTab = activeTab === 'joined';
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <a className="brand" href="#home">
+          <span className="brand-icon">g</span>
+          gather
+          <span className="brand-period">.</span>
+        </a>
+
+        <div className="header-right">
+          <span className="badge">Live data</span>
+
+          <button
+            type="button"
+            className="text-button"
+            onClick={refresh}
+            disabled={loading || busy}
+          >
+            Refresh plans
+          </button>
+
+          <a className="text-link" href="#home">
+            My events
+          </a>
+        </div>
+      </header>
+
+      <main>
+        <AccountPanel />
+
+        <div className="hero">
+          <span className="eyebrow">
+            LESS BACK-AND-FORTH. MORE HANGING OUT.
+          </span>
+
+          <h1>
+            {route.page === 'home'
+              ? 'Your plans, all together.'
+              : route.page === 'invite'
+                ? 'Make time for a good time.'
+                : 'Find your time together.'}
+          </h1>
+
+          <p>
+            {route.page === 'home'
+              ? 'Manage the events you organize and the ones you’ve joined.'
+              : route.page === 'invite'
+                ? 'Join this event and share when you’re available.'
+                : 'See who has responded and browse their available times.'}
+          </p>
+        </div>
+
+        {error && (
+          <div className="error" role="alert">
+            {error}{' '}
+            <button
+              type="button"
+              className="text-button"
+              onClick={refresh}
+            >
+              Retry
+            </button>
           </div>
-          {USE_MOCKS && <a className="text-link" href={`#dashboard/${encodeURIComponent(route.token)}`}>Back to organizer demo →</a>}
-        </section>}
-        <div className="layout"><MonthCalendar month={event.month} slots={summary.slots} timeZone={event.timeZone} selected={selected} onSelect={setSelected} />
-          <SuggestedSlots summary={summary} timeZone={event.timeZone} selected={selected} onSelect={setSelected} /></div>
-        {route.page === 'dashboard' && <section className="panel attendee-panel"><div className="section-heading"><div><span className="eyebrow">THE GROUP</span><h2>Who’s in?</h2></div><span className="badge">{summary.sharedCount}/{summary.joinedCount} shared</span></div>
-          {!attendees.length && <p>No one has joined yet. Open the invite to try joining.</p>}
-          {attendees.map((person) => <div className="attendee" key={person.attendeeId}><span className="avatar">{person.name.slice(0, 1)}</span><div><strong>{person.name}</strong>
-            <small>{!person.sharedAt ? 'Availability unknown' : person.busy.length ? person.busy.map((block) => slotLabel(block, event.timeZone)).join('; ') : 'No conflicts reported for this month'}</small></div><span className={`status ${person.sharedAt ? 'ready' : ''}`}>{person.sharedAt ? 'Shared' : 'Waiting'}</span></div>)}
-        </section>}
-      </>}
-      <footer>Gather · Frontend starter{USE_MOCKS && ' · Changes stay in this browser · Sample suggestions only'}</footer>
-    </main>
-  </div>;
+        )}
+
+        {message && (
+          <div className="success" role="status">
+            {message}
+          </div>
+        )}
+
+        {loading ? (
+          <p role="status">Loading your plans…</p>
+        ) : route.page === 'home' ? (
+          <>
+            <div
+              className="button-row"
+              style={{ marginBottom: 24 }}
+              aria-label="Event categories"
+            >
+              <button
+                type="button"
+                className={isJoinedTab ? 'secondary' : ''}
+                aria-pressed={!isJoinedTab}
+                onClick={() => setActiveTab('organizing')}
+              >
+                Organizing ({organizedEvents.length})
+              </button>
+
+              <button
+                type="button"
+                className={isJoinedTab ? '' : 'secondary'}
+                aria-pressed={isJoinedTab}
+                onClick={() => setActiveTab('joined')}
+              >
+                Joined ({joinedEvents.length})
+              </button>
+            </div>
+
+            <div className={isJoinedTab ? '' : 'layout'}>
+              {!isJoinedTab && (
+                <CreateEventForm
+                  busy={busy}
+                  onCreate={createEvent}
+                />
+              )}
+
+              <section className="panel">
+                <span className="eyebrow">
+                  {isJoinedTab ? 'YOU’RE INVITED' : 'YOU’RE THE ORGANIZER'}
+                </span>
+
+                <h2>
+                  {isJoinedTab
+                    ? 'Events you’ve joined'
+                    : 'Events you organize'}
+                </h2>
+
+                <p>
+                  {isJoinedTab
+                    ? 'Open an event to view or edit your availability.'
+                    : 'Open an event to see your group’s availability.'}
+                </p>
+
+                {!error && (
+                  <EventList
+                    events={
+                      isJoinedTab ? joinedEvents : organizedEvents
+                    }
+                    joined={isJoinedTab}
+                  />
+                )}
+              </section>
+            </div>
+          </>
+        ) : event ? (
+          <>
+            <section className="panel event-banner">
+              <div>
+                <span className="eyebrow">
+                  {monthLabel(event.month)}
+                </span>
+
+                <h2>{event.name}</h2>
+                <p>{event.description || 'No description yet.'}</p>
+                <small>Time zone: {event.timeZone}</small>
+              </div>
+
+              {route.page === 'dashboard' && (
+                <div className="invite-tools">
+                  <label>
+                    Shareable invite link
+                    <input readOnly value={inviteLink} />
+                  </label>
+
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={copyInvite}
+                    >
+                      Copy link
+                    </button>
+
+                    <a
+                      className="button"
+                      href={`#invite/${encodeURIComponent(route.token)}`}
+                    >
+                      Preview invite →
+                    </a>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {route.page === 'invite' && (
+              <AvailabilityForm
+                key={`${route.token}-${revision}`}
+                token={route.token}
+                event={event}
+                onSaved={() => {
+                  setMessage(
+                    'You joined and your availability was saved.'
+                  );
+                  refresh();
+                }}
+              />
+            )}
+
+            {route.page === 'dashboard' && (
+              <OrganizerAvailability
+                attendees={attendees}
+                timeZone={event.timeZone}
+              />
+            )}
+          </>
+        ) : null}
+
+        <footer>Gather · Scheduling prototype</footer>
+      </main>
+    </div>
+  );
 }
