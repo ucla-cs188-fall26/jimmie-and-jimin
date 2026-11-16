@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import AccountPanel from './components/AccountPanel.jsx';
 import AvailabilityForm from './components/AvailabilityForm.jsx';
+import LoginPage from './components/LoginPage.jsx';
 import CreateEventForm from './components/CreateEventForm.jsx';
 import OrganizerAvailability from './components/OrganizerAvailability.jsx';
 
@@ -20,7 +21,7 @@ function readRoute() {
   }
 
   return {
-    page: ['invite', 'dashboard'].includes(page) ? page : 'home',
+    page: ['invite', 'dashboard', 'login'].includes(page) ? page : 'home',
     token,
   };
 }
@@ -120,6 +121,10 @@ export default function App() {
 
     async function load() {
       try {
+        if (route.page === 'login') {
+          return;
+        }
+
         if (route.page === 'home') {
           const [organized, joined] = await Promise.all([
             api.listEvents(),
@@ -224,6 +229,10 @@ export default function App() {
       </header>
 
       <main>
+        {route.page === 'login' ? (
+          <LoginPage onSignedIn={() => go('home')} />
+        ) : (
+          <>
         <AccountPanel />
 
         <div className="hero">
@@ -393,6 +402,8 @@ export default function App() {
             )}
           </>
         ) : null}
+          </>
+        )}
 
         <footer>Gather · Scheduling prototype</footer>
       </main>

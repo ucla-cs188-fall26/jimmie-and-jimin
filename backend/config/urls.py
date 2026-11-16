@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 
-from api import auth_views
+from api import auth_views, google_auth_views
 from api.availability_views import availability
 from api.membership_views import joined_events
 from api.views import (
@@ -44,6 +44,8 @@ urlpatterns = [
         availability,
     ),
 
+    path("api/auth/config", google_auth_views.auth_config),
+    path("api/auth/google", google_auth_views.google_login),
     path("api/auth/signup", auth_views.signup),
     path("api/auth/login", auth_views.signin),
     path("api/auth/logout", auth_views.signout),

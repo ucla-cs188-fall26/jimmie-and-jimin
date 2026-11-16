@@ -26,6 +26,8 @@ def user_details(user):
     return {
         "userId": str(user.pk),
         "username": user.username,
+        # Google users have an unreadable username, so show their name.
+        "displayName": user.first_name or user.username,
     }
 
 
