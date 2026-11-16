@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import GoogleSignIn from './GoogleSignIn.jsx';
+
 async function authRequest(path, data) {
   const options = {
     credentials: 'same-origin',
@@ -45,10 +47,6 @@ async function authRequest(path, data) {
 
 export default function AccountPanel() {
   const [user, setUser] = useState(null);
-  const [mode, setMode] = useState('login');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -71,31 +69,6 @@ export default function AccountPanel() {
       ignore = true;
     };
   }, []);
-
-  async function submit(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-
-    try {
-      const data = mode === 'signup'
-        ? {
-            username,
-            password1: password,
-            password2: confirmation,
-          }
-        : { username, password };
-
-      const result = await authRequest(mode, data);
-      setUser(result.user);
-      setPassword('');
-      setConfirmation('');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function signOut() {
     setBusy(true);
@@ -124,87 +97,18 @@ export default function AccountPanel() {
       ) : user ? (
         <div>
           <p>
-            Signed in as <strong>{user.username}</strong>
+            Signed in as <strong>{user.displayName || user.username}</strong>
           </p>
           <button onClick={signOut} disabled={busy}>
             {busy ? 'Signing out…' : 'Log out'}
           </button>
         </div>
       ) : (
-        <form className="form" onSubmit={submit}>
-          <div className="button-row">
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              aria-pressed={mode === 'login'}
-              onClick={() => {
-                setMode('login');
-                setError('');
-              }}
-            >
-              Log in
-            </button>
+        <div className="google-first">
+          <p>Sign in with your Google account to get started.</p>
 
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              aria-pressed={mode === 'signup'}
-              onClick={() => {
-                setMode('signup');
-                setError('');
-              }}
-            >
-              Create account
-            </button>
-          </div>
-
-          <label>
-            Username
-            <input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              required
-              maxLength={150}
-            />
-          </label>
-
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={
-                mode === 'signup' ? 'new-password' : 'current-password'
-              }
-              required
-            />
-          </label>
-
-          {mode === 'signup' && (
-            <label>
-              Confirm password
-              <input
-                type="password"
-                value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
-                autoComplete="new-password"
-                required
-              />
-            </label>
-          )}
-
-          <button type="submit" disabled={busy}>
-            {busy
-              ? 'Please wait…'
-              : mode === 'signup'
-                ? 'Sign up'
-                : 'Log in'}
-          </button>
-        </form>
+          <GoogleSignIn onSignedIn={(result) => setUser(result.user)} />
+        </div>
       )}
     </section>
   );

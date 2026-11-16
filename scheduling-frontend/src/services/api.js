@@ -94,6 +94,17 @@ export const api = {
     });
   },
 
+  getAuthConfig() {
+    return request('/api/auth/config');
+  },
+
+  googleLogin(credential) {
+    return request('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+  },
+
   async connectCalendar() {
     throw new Error(
       'Google connection is not enabled. Use manual availability.'
