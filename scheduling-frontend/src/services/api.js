@@ -64,6 +64,12 @@ export const api = {
     });
   },
 
+  deleteEvent(eventId) {
+    return request(`/api/events/${encodeURIComponent(eventId)}`, {
+      method: 'DELETE',
+    });
+  },
+
   getInvite(token) {
     return request(invitePath(token));
   },

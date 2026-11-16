@@ -328,3 +328,8 @@ footer { padding: 36px 0 4px; color: #8a9486; font-size: 11px; text-align: cente
 .cal-day-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .cal-day-list li { display: grid; gap: 1px; padding: 10px 12px; background: #f7f9f3; border-radius: 10px; }
 @media (max-width: 700px) { .cal-cell { min-height: 64px; padding: 4px; } .cal-chip { display: none; } .cal-more { display: none; } }
+
+/* Delete event */
+.danger { background: #c0392b; color: #fff; margin-top: 14px; }
+.danger:hover { background: #a93226; filter: none; }
+.invite-tools .danger { width: 100%; }

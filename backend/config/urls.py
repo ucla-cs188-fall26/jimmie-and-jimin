@@ -3,6 +3,7 @@ from django.urls import path
 
 from api import auth_views, calendar_views, google_auth_views
 from api.availability_views import availability
+from api.event_delete_views import delete_event
 from api.suggestion_views import suggestions
 from api.membership_views import joined_events
 from api.views import (
@@ -25,6 +26,7 @@ urlpatterns = [
 
     path("api/events", events),
     path("api/events/joined", joined_events),
+    path("api/events/<str:event_id>", delete_event),
 
     path(
         "api/invites/<str:token>",

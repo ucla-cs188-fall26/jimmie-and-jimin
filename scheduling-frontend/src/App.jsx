@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import AccountPanel from './components/AccountPanel.jsx';
 import CalendarPanel from './components/CalendarPanel.jsx';
@@ -94,6 +94,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [revision, setRevision] = useState(0);
+  const keepMessage = useRef(false);
 
   function refresh() {
     setRevision((value) => value + 1);
@@ -102,7 +103,12 @@ export default function App() {
   useEffect(() => {
     function onHashChange() {
       setRoute(readRoute());
-      setMessage('');
+
+      if (keepMessage.current) {
+        keepMessage.current = false;
+      } else {
+        setMessage('');
+      }
     }
 
     window.addEventListener('hashchange', onHashChange);
@@ -179,6 +185,31 @@ export default function App() {
       const created = await api.createEvent(fields);
       go('dashboard', created.inviteToken);
     } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteEvent() {
+    const confirmed = window.confirm(
+      `Delete “${event.name}”? This also removes everyone’s ` +
+      'availability and the invite link will stop working. ' +
+      'This can’t be undone.'
+    );
+
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError('');
+
+    try {
+      await api.deleteEvent(event.eventId);
+      keepMessage.current = true;
+      setMessage('Event deleted.');
+      go('home');
+    } catch (err) {
+      keepMessage.current = false;
       setError(err.message);
     } finally {
       setBusy(false);
@@ -379,6 +410,15 @@ export default function App() {
                       Preview invite →
                     </a>
                   </div>
+
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={deleteEvent}
+                    disabled={busy}
+                  >
+                    {busy ? 'Deleting…' : 'Delete event'}
+                  </button>
                 </div>
               )}
             </section>
