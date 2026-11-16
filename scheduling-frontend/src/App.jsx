@@ -5,6 +5,7 @@ import AvailabilityForm from './components/AvailabilityForm.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import CreateEventForm from './components/CreateEventForm.jsx';
 import OrganizerAvailability from './components/OrganizerAvailability.jsx';
+import BestTimes from './components/BestTimes.jsx';
 
 import { api } from './services/api.js';
 import { monthLabel } from './lib/dates.js';
@@ -395,10 +396,13 @@ export default function App() {
             )}
 
             {route.page === 'dashboard' && (
-              <OrganizerAvailability
-                attendees={attendees}
-                timeZone={event.timeZone}
-              />
+              <>
+                <BestTimes token={route.token} refreshKey={revision} />
+                <OrganizerAvailability
+                  attendees={attendees}
+                  timeZone={event.timeZone}
+                />
+              </>
             )}
           </>
         ) : null}

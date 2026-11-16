@@ -298,3 +298,16 @@ footer { padding: 36px 0 4px; color: #8a9486; font-size: 11px; text-align: cente
 }.login-page { max-width: 460px; margin: 0 auto; text-align: center; display: grid; justify-items: center; gap: 4px; }
 .login-page h1 { font-size: 34px; letter-spacing: -1.2px; }
 .google-button { min-height: 44px; margin: 8px 0 18px; }
+
+/* Suggested times — scoped to avoid changing existing calendar/login styles. */
+.best-times { margin-bottom: 28px; }
+.best-times-summary { padding: 12px 0; border-top: 1px solid #e1e6dc; }
+.best-times-list { list-style: none; padding: 0; margin: 20px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.best-time-card { padding: 18px; border: 1px solid #dfe6d8; border-radius: 14px; background: #fafbf8; overflow-wrap: anywhere; }
+.best-time-card:first-child { background: #edf3e2; border-color: #8da776; }
+.best-time-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; }
+.best-time-card h3 { margin: 18px 0 6px; font-size: 17px; }
+.best-time-card p { font-size: 13px; margin: 10px 0; }
+.best-time-card .best-time-clock { font-size: 18px; font-weight: 700; color: #315b43; }
+.best-times-rules { margin-top: 18px; }
+@media (max-width: 800px) { .best-times-list { grid-template-columns: 1fr; } }

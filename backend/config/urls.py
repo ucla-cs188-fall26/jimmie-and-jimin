@@ -3,6 +3,7 @@ from django.urls import path
 
 from api import auth_views, google_auth_views
 from api.availability_views import availability
+from api.suggestion_views import suggestions
 from api.membership_views import joined_events
 from api.views import (
     health,
@@ -19,6 +20,8 @@ urlpatterns = [
 
     path("api/health", health),
     path("api/csrf", csrf),
+
+    path("api/invites/<str:token>/suggestions", suggestions),
 
     path("api/events", events),
     path("api/events/joined", joined_events),

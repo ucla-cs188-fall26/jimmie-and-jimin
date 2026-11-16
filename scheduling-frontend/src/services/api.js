@@ -72,6 +72,10 @@ export const api = {
     return request(`${invitePath(token)}/dashboard`);
   },
 
+  getSuggestions(token) {
+    return request(`${invitePath(token)}/suggestions`);
+  },
+
   getSlots(token) {
     return request(`${invitePath(token)}/slots`);
   },
