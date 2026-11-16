@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import AccountPanel from './components/AccountPanel.jsx';
+import CalendarPanel from './components/CalendarPanel.jsx';
 import AvailabilityForm from './components/AvailabilityForm.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import CreateEventForm from './components/CreateEventForm.jsx';
@@ -79,6 +80,7 @@ function EventList({ events, joined }) {
 
 export default function App() {
   const [route, setRoute] = useState(readRoute);
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('organizing');
 
   const [organizedEvents, setOrganizedEvents] = useState([]);
@@ -212,16 +214,12 @@ export default function App() {
         </a>
 
         <div className="header-right">
-          <span className="badge">Live data</span>
-
-          <button
-            type="button"
-            className="text-button"
-            onClick={refresh}
-            disabled={loading || busy}
-          >
-            Refresh plans
-          </button>
+          {/* "Refresh plans" button hidden for now; refresh() is still
+              used by the Retry button. Re-add it here if needed:
+              <button type="button" className="text-button"
+                onClick={refresh} disabled={loading || busy}>
+                Refresh plans
+              </button> */}
 
           <a className="text-link" href="#home">
             My events
@@ -234,7 +232,11 @@ export default function App() {
           <LoginPage onSignedIn={() => go('home')} />
         ) : (
           <>
-        <AccountPanel />
+        <AccountPanel onUserChange={setUser} />
+
+        {user && route.page === 'home' && (
+          <CalendarPanel key={user.userId} />
+        )}
 
         <div className="hero">
           <span className="eyebrow">

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 
-from api import auth_views, google_auth_views
+from api import auth_views, calendar_views, google_auth_views
 from api.availability_views import availability
 from api.suggestion_views import suggestions
 from api.membership_views import joined_events
@@ -46,6 +46,11 @@ urlpatterns = [
         "api/invites/<str:token>/availability",
         availability,
     ),
+
+    path("api/calendar/status", calendar_views.status),
+    path("api/calendar/connect", calendar_views.connect),
+    path("api/calendar/disconnect", calendar_views.disconnect),
+    path("api/calendar/events", calendar_views.calendar_events),
 
     path("api/auth/config", google_auth_views.auth_config),
     path("api/auth/google", google_auth_views.google_login),

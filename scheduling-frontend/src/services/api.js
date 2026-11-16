@@ -109,6 +109,26 @@ export const api = {
     });
   },
 
+  calendarStatus() {
+    return request('/api/calendar/status');
+  },
+
+  calendarConnect(code) {
+    return request('/api/calendar/connect', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  calendarDisconnect() {
+    return request('/api/calendar/disconnect', { method: 'POST' });
+  },
+
+  calendarEvents(timeMin, timeMax) {
+    const query = new URLSearchParams({ timeMin, timeMax });
+    return request(`/api/calendar/events?${query}`);
+  },
+
   async connectCalendar() {
     throw new Error(
       'Google connection is not enabled. Use manual availability.'

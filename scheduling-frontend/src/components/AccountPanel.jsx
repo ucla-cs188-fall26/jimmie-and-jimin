@@ -45,8 +45,12 @@ async function authRequest(path, data) {
   return result;
 }
 
-export default function AccountPanel() {
+export default function AccountPanel({ onUserChange }) {
   const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (onUserChange) onUserChange(user);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
