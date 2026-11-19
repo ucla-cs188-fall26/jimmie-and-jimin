@@ -12,14 +12,20 @@ def joined_events(request):
             status=401,
         )
 
+    user_id = str(request.user.pk)
+
     event_ids = db["attendees"].distinct(
         "eventId",
-        {"attendeeId": str(request.user.pk)},
+        {"attendeeId": user_id},
     )
 
     saved_events = list(
         db["events"].find(
-            {"eventId": {"$in": event_ids}},
+            # Events you organize are listed under "Organizing", not here.
+            {
+                "eventId": {"$in": event_ids},
+                "organizerId": {"$ne": user_id},
+            },
             {"_id": 0, "organizerId": 0},
         )
     )

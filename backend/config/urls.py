@@ -4,6 +4,8 @@ from django.urls import path
 from api import auth_views, calendar_views, google_auth_views
 from api.availability_views import availability
 from api.event_delete_views import delete_event
+from api.final_time_views import final_time
+from api.group_calendar_views import group_calendar, sync_busy
 from api.suggestion_views import suggestions
 from api.membership_views import joined_events
 from api.views import (
@@ -49,8 +51,13 @@ urlpatterns = [
         availability,
     ),
 
+    path("api/invites/<str:token>/final", final_time),
+    path("api/invites/<str:token>/busy", sync_busy),
+    path("api/invites/<str:token>/group-calendar", group_calendar),
+
     path("api/calendar/status", calendar_views.status),
-    path("api/calendar/connect", calendar_views.connect),
+    path("api/calendar/start", calendar_views.start),
+    path("api/calendar/callback", calendar_views.callback),
     path("api/calendar/disconnect", calendar_views.disconnect),
     path("api/calendar/events", calendar_views.calendar_events),
 

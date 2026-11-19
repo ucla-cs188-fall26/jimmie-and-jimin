@@ -8,7 +8,11 @@ export default function AvailabilityForm({ token, event, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const firstDay = `${event.month}-01`;
+  const monthStart = `${event.month}-01`;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Past days can't be suggested, so don't offer them for new times.
+  const firstDay = today > monthStart ? today : monthStart;
   const [year, month] = event.month.split('-').map(Number);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const lastDay = `${event.month}-${daysInMonth}`;

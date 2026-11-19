@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 
 import AccountPanel from './components/AccountPanel.jsx';
 import CalendarPanel from './components/CalendarPanel.jsx';
+import CalendarSync from './components/CalendarSync.jsx';
+import GroupCalendar from './components/GroupCalendar.jsx';
 import AvailabilityForm from './components/AvailabilityForm.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import CreateEventForm from './components/CreateEventForm.jsx';
 import OrganizerAvailability from './components/OrganizerAvailability.jsx';
 import BestTimes from './components/BestTimes.jsx';
+import FinalTime from './components/FinalTime.jsx';
 
 import { api } from './services/api.js';
 import { monthLabel } from './lib/dates.js';
@@ -402,13 +405,6 @@ export default function App() {
                     >
                       Copy link
                     </button>
-
-                    <a
-                      className="button"
-                      href={`#invite/${encodeURIComponent(route.token)}`}
-                    >
-                      Preview invite →
-                    </a>
                   </div>
 
                   <button
@@ -422,6 +418,19 @@ export default function App() {
                 </div>
               )}
             </section>
+
+            {route.page === 'invite' && (
+              <>
+                <FinalTime
+                  token={route.token}
+                  event={event}
+                  isOrganizer={false}
+                  onChanged={refresh}
+                />
+                <CalendarSync token={route.token} onSynced={refresh} />
+                <GroupCalendar token={route.token} refreshKey={revision} />
+              </>
+            )}
 
             {route.page === 'invite' && (
               <AvailabilityForm
@@ -439,7 +448,29 @@ export default function App() {
 
             {route.page === 'dashboard' && (
               <>
-                <BestTimes token={route.token} refreshKey={revision} />
+                <FinalTime
+                  token={route.token}
+                  event={event}
+                  isOrganizer
+                  onChanged={refresh}
+                />
+                <BestTimes
+                  token={route.token}
+                  refreshKey={revision}
+                  finalTime={event.finalTime}
+                  onPicked={refresh}
+                />
+                <CalendarSync token={route.token} onSynced={refresh} />
+                <GroupCalendar token={route.token} refreshKey={revision} />
+                <AvailabilityForm
+                  key={`${route.token}-${revision}`}
+                  token={route.token}
+                  event={event}
+                  onSaved={() => {
+                    setMessage('Your availability was saved.');
+                    refresh();
+                  }}
+                />
                 <OrganizerAvailability
                   attendees={attendees}
                   timeZone={event.timeZone}

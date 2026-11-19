@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { loadGoogleScript } from '../lib/google.js';
+import {
+  startCalendarConnect,
+  takeCalendarResult,
+} from '../lib/calendarConnect.js';
 import { api } from '../services/api.js';
-
-const CALENDAR_SCOPE =
-  'openid email https://www.googleapis.com/auth/calendar.readonly';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_CHIPS = 3;
@@ -76,6 +76,15 @@ export default function CalendarPanel() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  // Show the result when Google sends the user back here.
+  useEffect(() => {
+    const result = takeCalendarResult();
+
+    if (result?.ok) setNotice(result.message);
+    else if (result) setError(result.message);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -131,47 +140,9 @@ export default function CalendarPanel() {
     };
   }, [connected, year, month]);
 
-  async function connect() {
+  function connect() {
     setBusy(true);
-    setError('');
-
-    try {
-      const [{ googleClientId }, google] = await Promise.all([
-        api.getAuthConfig(),
-        loadGoogleScript(),
-      ]);
-
-      const client = google.accounts.oauth2.initCodeClient({
-        client_id: googleClientId,
-        scope: CALENDAR_SCOPE,
-        ux_mode: 'popup',
-        callback: async (response) => {
-          if (response.error || !response.code) {
-            setError('Calendar connection was cancelled.');
-            setBusy(false);
-            return;
-          }
-
-          try {
-            await api.calendarConnect(response.code);
-            setConnected(true);
-          } catch (err) {
-            setError(err.message);
-          } finally {
-            setBusy(false);
-          }
-        },
-        error_callback: () => {
-          setError('Calendar connection was cancelled.');
-          setBusy(false);
-        },
-      });
-
-      client.requestCode();
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
+    startCalendarConnect('#home');
   }
 
   async function disconnect() {
@@ -255,6 +226,7 @@ export default function CalendarPanel() {
         )}
       </div>
 
+      {notice && <p className="success" role="status">{notice}</p>}
       {error && <p className="error" role="alert">{error}</p>}
 
       {connected === null ? (

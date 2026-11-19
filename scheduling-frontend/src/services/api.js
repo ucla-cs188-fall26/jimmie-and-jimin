@@ -82,6 +82,17 @@ export const api = {
     return request(`${invitePath(token)}/suggestions`);
   },
 
+  setFinalTime(token, start, end) {
+    return request(`${invitePath(token)}/final`, {
+      method: 'PUT',
+      body: JSON.stringify({ start, end }),
+    });
+  },
+
+  clearFinalTime(token) {
+    return request(`${invitePath(token)}/final`, { method: 'DELETE' });
+  },
+
   getSlots(token) {
     return request(`${invitePath(token)}/slots`);
   },
@@ -119,13 +130,6 @@ export const api = {
     return request('/api/calendar/status');
   },
 
-  calendarConnect(code) {
-    return request('/api/calendar/connect', {
-      method: 'POST',
-      body: JSON.stringify({ code }),
-    });
-  },
-
   calendarDisconnect() {
     return request('/api/calendar/disconnect', { method: 'POST' });
   },
@@ -133,6 +137,14 @@ export const api = {
   calendarEvents(timeMin, timeMax) {
     const query = new URLSearchParams({ timeMin, timeMax });
     return request(`/api/calendar/events?${query}`);
+  },
+
+  syncBusy(token) {
+    return request(`${invitePath(token)}/busy`, { method: 'POST' });
+  },
+
+  getGroupCalendar(token) {
+    return request(`${invitePath(token)}/group-calendar`);
   },
 
   async connectCalendar() {

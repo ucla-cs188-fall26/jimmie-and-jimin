@@ -11,8 +11,24 @@ function displaySlot(slot, timeZone) {
   return { date, time: `${clock.format(new Date(slot.start))} – ${clock.format(new Date(slot.end))}` };
 }
 
-export default function BestTimes({ token, refreshKey }) {
+export default function BestTimes({ token, refreshKey, finalTime, onPicked }) {
+  const [picking, setPicking] = useState('');
+  const [pickError, setPickError] = useState('');
   const [data, setData] = useState(null);
+
+  async function pick(slot) {
+    setPicking(slot.start);
+    setPickError('');
+
+    try {
+      await api.setFinalTime(token, slot.start, slot.end);
+      onPicked();
+    } catch (err) {
+      setPickError(err.message);
+    } finally {
+      setPicking('');
+    }
+  }
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -34,6 +50,7 @@ export default function BestTimes({ token, refreshKey }) {
       <span className="eyebrow">LESS GUESSWORK</span>
       <h2 id="best-times-title">Suggested times</h2>
       <p>One-hour options ranked by how many people can attend.</p>
+      {pickError && <p className="error" role="alert">{pickError}</p>}
       {loading ? <p role="status">Finding your group’s best times…</p> : error ? (
         <div className="error" role="alert">
           {error}{' '}
@@ -59,6 +76,20 @@ export default function BestTimes({ token, refreshKey }) {
                     <p className="best-time-clock"><time dateTime={slot.start}>{label.time}</time></p>
                     <p><strong>Available:</strong> {slot.availableNames.join(', ')}</p>
                     {slot.unavailableNames.length > 0 && <p><strong>Unavailable:</strong> {slot.unavailableNames.join(', ')}</p>}
+                    {finalTime && new Date(finalTime.start).getTime() === new Date(slot.start).getTime() ? (
+                      <span className="badge">✓ Chosen</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={finalTime ? 'secondary' : ''}
+                        onClick={() => pick(slot)}
+                        disabled={Boolean(picking)}
+                      >
+                        {picking === slot.start
+                          ? 'Saving…'
+                          : finalTime ? 'Switch to this time' : 'Pick this time'}
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -67,7 +98,7 @@ export default function BestTimes({ token, refreshKey }) {
             <div className="notice">
               {data.sharedCount === 0
                 ? 'Share the invite and ask participants to submit availability to see suggestions.'
-                : 'No future one-hour options match submitted availability within the search window. Ask participants to add more times.'}
+                : 'No upcoming one-hour options match what people shared. Times that have already passed are skipped, so add availability on a future date.'}
             </div>
           )}
           {data.unknownNames.length > 0 && (

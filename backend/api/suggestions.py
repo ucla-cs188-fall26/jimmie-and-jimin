@@ -35,6 +35,28 @@ def _ranges(person, month, zone):
     return merged
 
 
+def _busy_ranges(person):
+    """Busy blocks synced from a person's Google Calendar (UTC instants)."""
+    ranges = []
+    for block in person.get("busy") or []:
+        try:
+            start = datetime.fromisoformat(block["start"])
+            end = datetime.fromisoformat(block["end"])
+            if start.tzinfo and end.tzinfo and end > start:
+                ranges.append((start, end))
+        except (KeyError, ValueError, TypeError):
+            continue
+    return ranges
+
+
+def _typed_availability(person):
+    return bool(person.get("sharedAt") and isinstance(person.get("available"), list))
+
+
+def _synced_calendar(person):
+    return bool(person.get("busySyncedAt"))
+
+
 def recommend_times(event, attendees, now=None):
     """Top 3 future hours, half-hour grid, noon–8 PM; unknown != unavailable."""
     zone = ZoneInfo(event["timeZone"])
@@ -43,11 +65,15 @@ def recommend_times(event, attendees, now=None):
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("now must include a time zone")
+    # Someone has responded if they typed their availability or synced their
+    # calendar. A synced calendar means "free except when busy".
     submitted = [p for p in attendees
-                 if p.get("sharedAt") and isinstance(p.get("available"), list)]
+                 if _typed_availability(p) or _synced_calendar(p)]
     unknown = [p.get("name", "Unnamed participant") for p in attendees
-               if not (p.get("sharedAt") and isinstance(p.get("available"), list))]
-    prepared = [(p.get("name", "Unnamed participant"), _ranges(p, month, zone))
+               if not (_typed_availability(p) or _synced_calendar(p))]
+    prepared = [(p.get("name", "Unnamed participant"),
+                 _ranges(p, month, zone) if _typed_availability(p) else None,
+                 _busy_ranges(p))
                 for p in submitted]
     candidates = []
     for day_number in range(1, calendar.monthrange(first.year, first.month)[1] + 1):
@@ -62,8 +88,11 @@ def recommend_times(event, attendees, now=None):
             if start <= now:
                 continue
             available, unavailable = [], []
-            for name, ranges in prepared:
-                covered = any(a <= start and b >= end for a, b in ranges)
+            for name, ranges, busy in prepared:
+                covered = (
+                    (ranges is None or any(a <= start and b >= end for a, b in ranges))
+                    and not any(a < end and b > start for a, b in busy)
+                )
                 (available if covered else unavailable).append(name)
             if available:
                 candidates.append({
